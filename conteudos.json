@@ -1,0 +1,22 @@
+[
+  {
+    "id": "c01-video",
+    "kind": "video",
+    "title": "Pacote 1 · Preparando comida",
+    "caption": "⏳ Tempo é o único ingrediente que não dá pra repor.\n\n✅ A gente cuida da cozinha. Você cuida do resto.\n\nPacotes personalizados, com trocas liberadas pra nunca enjoar e comida de verdade chegando todos os dias ❤️\n\n📩 Chama no direct e escolha o plano que cabe na sua rotina",
+    "files": [
+      "pacote1-video.mp4"
+    ]
+  },
+  {
+    "id": "c02-fotos",
+    "kind": "fotos",
+    "title": "Pacote 1 · Carrossel de marmitas",
+    "caption": "Você não precisa escolher entre comer bem e ter tempo.\n\nA gente resolve os dois!\nEntregamos na sua casa marmitas fresquinhas, de acordo com o seu plano alimentar 😋\n\n📩 Chama no direct.",
+    "files": [
+      "pacote1-foto1.jpg",
+      "pacote1-foto2.jpg",
+      "pacote1-foto3.jpg"
+    ]
+  }
+]

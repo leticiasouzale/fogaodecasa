@@ -1,6 +1,6 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Aprovação Fogão de Casa</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap">
@@ -106,6 +106,7 @@ input[type=text]:hover,select:hover,textarea:hover{border-color:var(--green)}
 @media (prefers-reduced-motion:reduce){.track{scroll-behavior:auto}}
 </style>
 
+</head><body>
 <header class="head">
   <div class="wrap">
     <p class="eyebrow">Aprovação de conteúdos</p>
@@ -129,11 +130,12 @@ input[type=text]:hover,select:hover,textarea:hover{border-color:var(--green)}
 
 <script>
 (function(){
-  var db=null, assets=null, isAgency=false;
-  var cards=new Map();
+  var ENDPOINT='https://script.google.com/macros/s/AKfycbyIdhU91ZwSh23DdioQJHVOJtAcc-ypogJzoHczX83WXbO3FMLhJRuDUxMHTKW2uLe-cA/exec';
+  var items=[], cards=new Map();
   var grid=document.getElementById('grid'), stateEl=document.getElementById('state'), tally=document.getElementById('tally');
   var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   var fmt=new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  var LABEL={pendente:'Aguardando resposta',aprovado:'Aprovado',alteracao:'Alteração solicitada'};
 
   function h(tag,props){
     var e=document.createElement(tag); props=props||{};
@@ -148,28 +150,25 @@ input[type=text]:hover,select:hover,textarea:hover{border-color:var(--green)}
     for(var i=2;i<arguments.length;i++){var c=arguments[i]; if(c==null)continue; if(Array.isArray(c))c.forEach(function(x){e.append(x)}); else e.append(c);}
     return e;
   }
-  function use(name){
-    try{return Promise.resolve(window.claude&&window.claude.use(name)).then(function(x){return x||null},function(){return null});}
-    catch(e){return Promise.resolve(null)}
-  }
   function showState(title,text){stateEl.hidden=false;stateEl.replaceChildren(h('strong',{text:title}),document.createTextNode(text||''))}
 
-  var LABEL={pendente:'Aguardando resposta',aprovado:'Aprovado',alteracao:'Alteração solicitada'};
+  /* Respostas ficam salvas no navegador de quem respondeu */
+  function load(id){try{return JSON.parse(localStorage.getItem('fdc-resp-'+id)||'null')||{}}catch(e){return {}}}
+  function save(id,v){try{localStorage.setItem('fdc-resp-'+id,JSON.stringify(v))}catch(e){}}
 
-  /* ---------- Mídia ---------- */
   function buildMedia(data){
-    var files=Array.isArray(data.files)?data.files:[];
+    var files=data.files||[];
     var box=h('div',{class:'media'});
     if(!files.length){box.append(h('div',{class:'missing',text:'Arquivo indisponível.'}));return box;}
     if(data.kind==='video'){
-      var v=h('video',{controls:true,playsinline:true,preload:'metadata',src:'/_blob/'+files[0].id,'aria-label':data.title||'Vídeo do conteúdo'});
+      var v=h('video',{controls:true,playsinline:true,preload:'metadata',src:files[0],'aria-label':data.title||'Vídeo do conteúdo'});
       v.addEventListener('error',function(){box.replaceChildren(h('div',{class:'missing',text:'Não foi possível carregar o vídeo.'}))});
       box.append(v);return box;
     }
     var n=files.length;
     var track=h('div',{class:'track',tabindex:'0',role:'group','aria-label':'Fotos do conteúdo'});
     files.forEach(function(f,i){
-      var img=h('img',{src:'/_blob/'+f.id,alt:(data.title?data.title+' · ':'')+'foto '+(i+1)+' de '+n,loading:'lazy'});
+      var img=h('img',{src:f,alt:(data.title?data.title+' · ':'')+'foto '+(i+1)+' de '+n,loading:'lazy'});
       var slide=h('div',{class:'slide'},img);
       img.addEventListener('error',function(){slide.replaceChildren(h('div',{class:'missing',text:'Não foi possível carregar a foto.'}))});
       track.append(slide);
@@ -182,16 +181,13 @@ input[type=text]:hover,select:hover,textarea:hover{border-color:var(--green)}
       box.append(
         h('button',{class:'nav prev',type:'button','aria-label':'Foto anterior',text:'‹',onclick:function(){go(-1)}}),
         h('button',{class:'nav next',type:'button','aria-label':'Próxima foto',text:'›',onclick:function(){go(1)}}),
-        count
-      );
+        count);
     }
     return box;
   }
 
-  /* ---------- Cartão ---------- */
-  function buildCard(id,data){
-    var c={id:id,data:data,dirty:false,busy:false,confirming:false};
-    var ref=db.collection('conteudos').doc(id);
+  function buildCard(data){
+    var id=data.id, c={id:id,data:data,resp:load(id),busy:false};
     var n=(data.files||[]).length;
     c.pill=h('span',{class:'pill'});
     c.sel=h('select',{id:'sel-'+id},
@@ -213,20 +209,33 @@ input[type=text]:hover,select:hover,textarea:hover{border-color:var(--green)}
       c.hint.hidden=!(v==='alteracao'&&!filled);
       c.btn.disabled=c.busy||!(v==='aprovado'||(v==='alteracao'&&filled));
     };
-    var touch=function(){c.dirty=true;c.msg.textContent='';c.msg.className='status';sync()};
+    var touch=function(){c.msg.textContent='';c.msg.className='status';sync()};
     c.sel.addEventListener('change',touch);
     c.note.addEventListener('input',touch);
-    c.sync=sync;
 
     c.btn.addEventListener('click',function(){
       var v=c.sel.value, note=c.note.value.trim();
       if(!(v==='aprovado'||(v==='alteracao'&&note)))return;
+      if(!ENDPOINT||ENDPOINT.indexOf('COLE_AQUI')===0){c.msg.className='status err';c.msg.textContent='O envio de respostas ainda não foi configurado.';return}
       c.busy=true;sync();c.btn.textContent='Enviando…';
-      ref.update({status:v,note:v==='alteracao'?note:'',answeredAt:Date.now()}).then(function(){
-        c.dirty=false;c.msg.className='status';c.msg.textContent='Resposta enviada. Obrigado!';
-      },function(){
-        c.msg.className='status err';c.msg.textContent='Não foi possível enviar. Confirme que você entrou na sua conta e tente de novo.';
-      }).then(function(){c.busy=false;c.btn.textContent='Atualizar resposta';sync()});
+      var titulo=data.title||id;
+      fetch(ENDPOINT,{
+        method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({
+          conteudo:titulo,
+          resposta:v==='aprovado'?'Aprovado':'Alteração solicitada',
+          alteracoes:v==='alteracao'?note:''
+        })
+      })
+      .then(function(r){return r.json()}).then(function(j){
+        if(!j.success)throw new Error('fail');
+        c.resp={status:v,note:v==='alteracao'?note:'',answeredAt:Date.now()};
+        save(id,c.resp);
+        c.msg.className='status';c.msg.textContent='Resposta enviada. Obrigado!';
+        refresh(c);renderTally();
+      }).catch(function(){
+        c.msg.className='status err';c.msg.textContent='Não foi possível enviar. Verifique sua conexão e tente de novo.';
+      }).then(function(){c.busy=false;c.btn.textContent=c.resp.status?'Atualizar resposta':'Enviar resposta';sync()});
     });
 
     var body=h('div',{class:'body'},
@@ -235,85 +244,37 @@ input[type=text]:hover,select:hover,textarea:hover{border-color:var(--green)}
       c.cap,
       h('div',{class:'form'},
         h('div',{class:'field'},h('label',{for:'sel-'+id,text:'Sua avaliação'}),h('div',{class:'sel'},c.sel)),
-        c.noteWrap,c.hint,c.btn,c.msg,c.meta)
-    );
-
-    if(isAgency){
-      var danger=h('div',{class:'danger'});
-      var render=function(){
-        danger.replaceChildren();
-        if(!c.confirming){
-          danger.append(h('button',{class:'link red',type:'button',text:'Remover conteúdo',onclick:function(){c.confirming=true;render()}}));
-        }else{
-          danger.append(
-            h('span',{class:'meta',text:'Remover de vez, com os arquivos?'}),
-            h('button',{class:'link red',type:'button',text:'Sim, remover',onclick:function(){remove(c)}}),
-            h('button',{class:'link',type:'button',text:'Cancelar',onclick:function(){c.confirming=false;render()}})
-          );
-        }
-      };
-      render();body.append(danger);
-    }
-
+        c.noteWrap,c.hint,c.btn,c.msg,c.meta));
+    c.sync=sync;
     c.el=h('article',{class:'card'},buildMedia(data),body);
-    updateCard(c,data,true);
+    c.capP.textContent=data.caption||'';c.cap.hidden=!data.caption;
+    c.sel.value=c.resp.status||'';c.note.value=c.resp.note||'';
+    refresh(c);
     return c;
   }
-
-  function updateCard(c,data,first){
-    c.data=data;
-    c.capP.textContent=data.caption||'';c.cap.hidden=!data.caption;
-    var st=LABEL[data.status]?data.status:'pendente';
+  function refresh(c){
+    var st=LABEL[c.resp.status]?c.resp.status:'pendente';
     c.pill.className='pill s-'+st;c.pill.textContent=LABEL[st];
-    if(first||!c.dirty){
-      c.sel.value=(st==='aprovado'||st==='alteracao')?st:'';
-      c.note.value=data.note||'';
-    }
     c.btn.textContent=st==='pendente'?'Enviar resposta':'Atualizar resposta';
-    c.meta.textContent=data.answeredAt?'Última resposta em '+fmt.format(new Date(data.answeredAt)).replace(',',' às'):'';
+    c.meta.textContent=c.resp.answeredAt?'Última resposta em '+fmt.format(new Date(c.resp.answeredAt)).replace(',',' às'):'';
     c.sync();
   }
-
-  function remove(c){
-    var ids=(c.data.files||[]).map(function(f){return f.id});
-    var p=db.collection('conteudos').doc(c.id).delete();
-    p.then(function(){
-      if(assets)return Promise.all(ids.map(function(i){return assets.delete(i).catch(function(){})}));
-    }).catch(function(){c.confirming=false;});
-  }
-
-  /* ---------- Lista ---------- */
-  function onSnap(snap){
-    var seen=new Set(), list=[];
-    snap.docs.forEach(function(d){seen.add(d.id);list.push([d.id,d.data()||{}])});
-    cards.forEach(function(c,id){if(!seen.has(id)){c.el.remove();cards.delete(id)}});
-    list.forEach(function(pair,i){
-      var id=pair[0],data=pair[1],c=cards.get(id);
-      if(!c){c=buildCard(id,data);cards.set(id,c)}else updateCard(c,data,false);
-      if(grid.children[i]!==c.el)grid.insertBefore(c.el,grid.children[i]||null);
-    });
-    if(list.length){stateEl.hidden=true}
-    else showState('Nenhum conteúdo por aqui ainda.',' Os conteúdos da semana aparecem aqui assim que forem anexados.');
+  function renderTally(){
     var k={pendente:0,aprovado:0,alteracao:0};
-    list.forEach(function(p){k[LABEL[p[1].status]?p[1].status:'pendente']++});
-    tally.replaceChildren();
-    if(list.length){
-      tally.append(
-        h('span',{class:'chip s-aprovado',text:k.aprovado+(k.aprovado===1?' aprovado':' aprovados')}),
-        h('span',{class:'chip s-alteracao',text:k.alteracao+(k.alteracao===1?' com alteração':' com alterações')}),
-        h('span',{class:'chip s-pendente',text:k.pendente+(k.pendente===1?' aguardando':' aguardando')})
-      );
-    }
+    cards.forEach(function(c){k[LABEL[c.resp.status]?c.resp.status:'pendente']++});
+    tally.replaceChildren(
+      h('span',{class:'chip s-aprovado',text:k.aprovado+(k.aprovado===1?' aprovado':' aprovados')}),
+      h('span',{class:'chip s-alteracao',text:k.alteracao+(k.alteracao===1?' com alteração':' com alterações')}),
+      h('span',{class:'chip s-pendente',text:k.pendente+' aguardando'}));
   }
 
-  /* ---------- Início ---------- */
-  Promise.all([use('db'),use('assets')]).then(function(r){
-    db=r[0];assets=r[1];isAgency=!!(assets&&db);
-    if(!db){showState('Não foi possível carregar os conteúdos.',' Abra o link com a sua conta e recarregue a página.');return}
-    db.collection('conteudos').orderBy('createdAt','asc').onSnapshot(onSnap,function(){
-      showState('Não foi possível carregar os conteúdos.',' Recarregue a página em instantes.');
-    });
-  });
+  fetch('conteudos.json',{cache:'no-cache'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(list){
+    items=list||[];
+    if(!items.length){showState('Nenhum conteúdo por aqui ainda.',' Os conteúdos da semana aparecem aqui assim que forem anexados.');return}
+    stateEl.hidden=true;
+    items.forEach(function(d){var c=buildCard(d);cards.set(d.id,c);grid.append(c.el)});
+    renderTally();
+  }).catch(function(){showState('Não foi possível carregar os conteúdos.',' Recarregue a página em instantes.')});
 })();
 </script>
 
