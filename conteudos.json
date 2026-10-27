@@ -1,22 +1,21 @@
 [
   {
-    "id": "c01-video",
+    "id": "c03-video",
     "kind": "video",
-    "title": "Pacote 1 · Preparando comida",
-    "caption": "⏳ Tempo é o único ingrediente que não dá pra repor.\n\n✅ A gente cuida da cozinha. Você cuida do resto.\n\nPacotes personalizados, com trocas liberadas pra nunca enjoar e comida de verdade chegando todos os dias ❤️\n\n📩 Chama no direct e escolha o plano que cabe na sua rotina",
+    "title": "Avulsas 1 · Comida de verdade",
+    "caption": "Comida de verdade tem gosto de casa! 🍚\n\nA gente cozinha no dia, como se fosse pra nossa própria família, e entrega pronto pra você só sentar e comer.\n\nSem escolher no escuro: você vê o cardápio antes, sabe exatamente o que vem na marmita e recebe quentinha, no horário.\n\nCardápio novo todos os dias, sempre com duas opções de almoço.\n👉 Link na bio para ver o de hoje.",
     "files": [
-      "pacote1-video.mp4"
+      "avulsas1-video.mp4"
     ]
   },
   {
-    "id": "c02-fotos",
+    "id": "c04-fotos",
     "kind": "fotos",
-    "title": "Pacote 1 · Carrossel de marmitas",
-    "caption": "Você não precisa escolher entre comer bem e ter tempo.\n\nA gente resolve os dois!\nEntregamos na sua casa marmitas fresquinhas, de acordo com o seu plano alimentar 😋\n\n📩 Chama no direct.",
+    "title": "Avulsas 1 · Carrossel almoço",
+    "caption": "Tem coisa que não tem preço: abrir a marmita e sentir aquele cheirinho de comida feita agora, na hora 😍\n\nQuer variar? É só trocar a proteína do dia!\n\n👉  Cardápio de hoje no link da bio!",
     "files": [
-      "pacote1-foto1.jpg",
-      "pacote1-foto2.jpg",
-      "pacote1-foto3.jpg"
+      "avulsas1-foto1.jpg",
+      "avulsas1-foto2.jpg"
     ]
   }
 ]
